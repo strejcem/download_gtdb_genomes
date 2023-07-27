@@ -6,7 +6,7 @@ library(argparser, quietly = TRUE)
 
 p <- arg_parser(
   hide.opts = TRUE,
-  "Version 2.0, by Michal Strejcek @ UCT Prague
+  "Version 2.1, by Michal Strejcek @ UCT Prague
   Downloads NCBI assemblies from RefSeq or GenBank based on GTDB taxonomy labels.
 
   At least one of Arc/Bac taxonomy/metadata file needs to be specified.
@@ -45,6 +45,11 @@ p <-
                "--tax_level",
                help = "One of [phylum, class, order, family, genus, species]. To be used with '--num_genomes'. Move the '--num_genomes' selection to a specified taxnomic rank within the '--gtdb_tag' entries. Eg. '--gtdb_tag f__Pseudomonadaceae,c__Heimdallarchaeia --num_genomes 3 --tax_level genus' will download three random genomes of all genera within Pseudomonadaceae family and Heimdallarchaeia class.",
                default = NA)
+p <-
+  add_argument(p,
+               "--mimag",
+               help = "One of [low, medium, high, all] filters MIMAG quality of MAGs",
+               default = "all")
 p <-
   add_argument(p, "--just_acc_list", help = "Creates the accession list but no download.", flag = TRUE)
 p <-
@@ -94,6 +99,11 @@ if (!is.na(argv$tax_level) &
   stop("When using '--tax_level' you must also specify '--num_genomes'!")
 }
 
+if (!is.na(argv$mimag) &
+    !argv$mimag %in% c("low", "medium", "high", "all")) {
+  stop("'--mimag' must be one of [low|medium|high|all")
+}
+
 if (!is.na(argv$seed)) {
   set.seed(argv$seed)
 }
@@ -106,7 +116,10 @@ gtdb_meta <-
   read_tsv(col_types = cols_only(
     accession = 'c',
     gtdb_taxonomy = 'c',
-    gtdb_representative = 'l'
+    gtdb_representative = 'l',
+    mimag_low_quality = 'l',
+    mimag_medium_quality = 'l',
+    mimag_high_quality = 'l'
   )) %>%
   separate(
     gtdb_taxonomy,
@@ -132,7 +145,17 @@ tax_selection <- gtdb_meta %>%
     } else {
       .
     }
-  } %>%
+  } %>% {
+    if (argv$mimag == "low") {
+      filter(., mimag_low_quality)
+    } else if (argv$mimag == "medium") {
+      filter(., mimag_medium_quality)
+    } else if (argv$mimag == "high") {
+      filter(., mimag_high_quality) 
+    } else {
+      .
+      }
+  } %>% 
   select(accession,
          Domain,
          Phylum,
