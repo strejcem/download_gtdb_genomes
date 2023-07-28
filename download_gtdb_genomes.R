@@ -47,9 +47,19 @@ p <-
                default = NA)
 p <-
   add_argument(p,
+               "--contigs2genomes",
+               help = "[Path] to a file containing contigs/scaffolds to their respective genome file.",
+               default = NA)
+p <-
+  add_argument(p,
                "--mimag",
                help = "One of [low, medium, high, all] filters MIMAG quality of MAGs",
                default = "all")
+p <-
+  add_argument(p,
+               "--rename",
+               help = "[TRUE|FALSE] Rename downloaded genome files to accession.fna and a sequence headers starts with the assembly accession.",
+               default = TRUE)
 p <-
   add_argument(p, "--just_acc_list", help = "Creates the accession list but no download.", flag = TRUE)
 p <-
@@ -113,14 +123,16 @@ to_pick <- str_split_1(argv$gtdb_tag, pattern = ",")
 message("Reading GTDB metadata...")
 gtdb_meta <-
   file.path(argv$metadata) %>%
-  read_tsv(col_types = cols_only(
-    accession = 'c',
-    gtdb_taxonomy = 'c',
-    gtdb_representative = 'l',
-    mimag_low_quality = 'l',
-    mimag_medium_quality = 'l',
-    mimag_high_quality = 'l'
-  )) %>%
+  read_tsv(
+    col_types = cols_only(
+      accession = 'c',
+      gtdb_taxonomy = 'c',
+      gtdb_representative = 'l',
+      mimag_low_quality = 'l',
+      mimag_medium_quality = 'l',
+      mimag_high_quality = 'l'
+    )
+  ) %>%
   separate(
     gtdb_taxonomy,
     into = c(
@@ -151,11 +163,11 @@ tax_selection <- gtdb_meta %>%
     } else if (argv$mimag == "medium") {
       filter(., mimag_medium_quality)
     } else if (argv$mimag == "high") {
-      filter(., mimag_high_quality) 
+      filter(., mimag_high_quality)
     } else {
       .
-      }
-  } %>% 
+    }
+  } %>%
   select(accession,
          Domain,
          Phylum,
@@ -219,22 +231,22 @@ unzip_arguments <- str_c(sep = " ",
                          out_dir)
 rehydrate_arguments <- str_c(sep = " ",
                              "rehydrate",
-                             "--gzip",
+                             # "--gzip",
                              "--directory", out_dir)
 system2("datasets", args = dehydrate_arguments)
 system2("unzip", args = unzip_arguments)
 system2("datasets", args = rehydrate_arguments)
 
 #check that everything went ok
-downloaded_files <-
+downloaded_genomes <-
   list.files(
     out_dir,
-    pattern = "*.gz",
+    pattern = "*.fna",
     full.names = FALSE,
     recursive = TRUE
   )
 downloaded_accession <-
-  str_extract(basename(downloaded_files),
+  str_extract(basename(downloaded_genomes),
               "(GCA|GCF)_[:digit:]+\\.[:digit:]+")
 missing_genomes <- tax_selection %>%
   filter(!accession %in% downloaded_accession) %>%
@@ -251,22 +263,31 @@ if (length(missing_genomes) == 0) {
     print(n = 20)
 }
 
-# #move genome files to a new directory
-# 
-# ncbi_genomes <-
-#   list.files(
-#     tmp_dir,
-#     pattern = "\\.fna.gz$",
-#     full.names = TRUE,
-#     recursive = TRUE
-#   )
-# 
-# new_names <- ncbi_genomes %>%
-#   basename() %>%
-#   str_replace("_[:alpha:]+[:digit:]+v[:digit:]+_", "_")
-# 
-# invisible(file.copy(
-#   from = file.path(ncbi_genomes),
-#   to = file.path(out_dir, new_names),
-#   overwrite = FALSE
-# ))
+if (argv$rename) {
+  ncbi_genomes <-
+    list.files(
+      out_dir,
+      pattern = "\\.fna$",
+      full.names = TRUE,
+      recursive = TRUE
+    )
+  
+  new_names <- ncbi_genomes %>%
+    basename() %>%
+    str_extract("^GC._[:digit:]+\\.[:digit:]+") %>%
+    str_c(".fna")
+  
+  invisible(file.copy(
+    from = file.path(ncbi_genomes),
+    to = file.path(out_dir, new_names),
+    overwrite = FALSE
+  ))
+  
+  unlink(recursive = TRUE,
+         c(
+           file.path(out_dir, "README.md"),
+           file.path(out_dir, "accessions.txt"),
+           file.path(out_dir, "dehydrated.zip"),
+           file.path(out_dir, "ncbi_dataset")
+         ))
+}
