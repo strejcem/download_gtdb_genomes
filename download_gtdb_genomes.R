@@ -98,8 +98,8 @@ if (!is.na(argv$num_genomes) &
 }
 
 if (!is.na(argv$tax_level) &
-    !argv$tax_level %in% c("Phylum", "Class", "Order", "Family", "Genus", "Species")) {
-  stop("'--tax_level' must be one of [Phylum|Class|Order|Family|Genus|Species]")
+    !argv$tax_level %in% c("phylum", "class", "order", "samily", "senus", "species")) {
+  stop("'--tax_level' must be one of [phylum|class|order|family|genus|species]")
 }
 
 if (!is.na(argv$tax_level) &
@@ -134,13 +134,13 @@ gtdb_meta <-
   separate(
     gtdb_taxonomy,
     into = c(
-      "Domain",
-      "Phylum",
-      "Class",
-      "Order",
-      "Family",
-      "Genus",
-      "Species"
+      "domain",
+      "phylum",
+      "class",
+      "order",
+      "family",
+      "genus",
+      "species"
     ),
     sep = ";"
   ) %>%
@@ -167,13 +167,13 @@ tax_selection <- gtdb_meta %>%
     }
   } %>%
   select(accession,
-         Domain,
-         Phylum,
-         Class,
-         Order,
-         Family,
-         Genus,
-         Species) %>%
+         domain,
+         phylum,
+         class,
+         order,
+         family,
+         genus,
+         species) %>%
   pivot_longer(names_to = "taxonomy", cols = -c(accession)) %>%
   filter(value %in% to_pick) %>%
   distinct(accession) %>%
@@ -232,6 +232,11 @@ rehydrate_arguments <- str_c(sep = " ",
                              # "--gzip",
                              "--directory", out_dir)
 system2("datasets", args = dehydrate_arguments)
+
+if (!file.exists(dehydrated_file)) {
+  stop("Something went wrong with the dataset download!")
+}
+
 system2("unzip", args = unzip_arguments)
 system2("datasets", args = rehydrate_arguments)
 
@@ -257,7 +262,7 @@ if (length(missing_genomes) == 0) {
   message("Missing these genomes:")
   gtdb_meta %>%
     filter(accession %in% missing_genomes) %>%
-    select(accession, Domain, Phylum, Genus) %>%
+    select(accession, domain, phylum, genus) %>%
     print(n = 20)
 }
 
@@ -318,5 +323,7 @@ if (!is.na(argv$contigs2genomes)) {
       contigs = str_extract(contigs, "^>[:alnum:]+\\.[:digit:]+"),
       contigs = str_remove(contigs, "^>")
     ) %>%
-    write_tsv(argv$contigs2genomes)
+    write_tsv(argv$contigs2genomes, col_names = FALSE)
 }
+
+#TODO: add taxonomy file
