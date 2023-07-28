@@ -1,8 +1,6 @@
 #!/usr/bin/env Rscript
 
-
 library(argparser, quietly = TRUE)
-
 
 p <- arg_parser(
   hide.opts = TRUE,
@@ -290,4 +288,35 @@ if (argv$rename) {
            file.path(out_dir, "dehydrated.zip"),
            file.path(out_dir, "ncbi_dataset")
          ))
+}
+
+if (!is.na(argv$contigs2genomes)) {
+  message("Generating contigs2genomes file...")
+  
+  if (!dir.exists(dirname(argv$contigs2genomes))) {
+    dir.create(dirname(argv$contigs2genomes))
+  }
+  
+  fna_files <-
+    list.files(
+      out_dir,
+      pattern = "*\\.fna$",
+      recursive = TRUE,
+      full.names = TRUE
+    )
+  
+  collect_contigs <- function(x) {
+    awk_cmd <- sprintf("awk '$1 ~ /^>/' %s", x)
+    tibble(genomes = basename(fna_files),
+           contigs = readLines(pipe(sprintf(awk_cmd))))
+  }
+  
+  map(fna_files, .f = collect_contigs, .progress = TRUE) %>%
+    list_rbind() %>%
+    mutate(
+      genomes = str_remove(genomes, "\\.fna$"),
+      contigs = str_extract(contigs, "^>[:alnum:]+\\.[:digit:]+"),
+      contigs = str_remove(contigs, "^>")
+    ) %>%
+    write_tsv(argv$contigs2genomes)
 }
