@@ -312,7 +312,7 @@ if (!is.na(argv$contigs2genomes)) {
   
   collect_contigs <- function(x) {
     awk_cmd <- sprintf("awk '$1 ~ /^>/' %s", x)
-    tibble(genomes = basename(fna_files),
+    tibble(genomes = basename(x),
            contigs = readLines(pipe(sprintf(awk_cmd))))
   }
   
