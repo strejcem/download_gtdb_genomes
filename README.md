@@ -14,7 +14,7 @@ wget https://data.gtdb.ecogenomic.org/releases/latest/VERSION.txt
 
 tar xzf ar53_metadata.tar.gz
 tar xzf bac120_metadata.tar.gz
-cat *_metadata*.tsv | gz > gtdb_metadata.tsv.gz
+cat *_metadata*.tsv | gzip > gtdb_metadata.tsv.gz
 
 ```
 ### Example of usage:
