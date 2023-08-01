@@ -324,6 +324,7 @@ if (!is.na(argv$contigs2genomes)) {
       contigs = str_remove(contigs, "^>")
     ) %>%
     write_tsv(argv$contigs2genomes, col_names = FALSE)
+  message("Done.")
 }
 
 #TODO: add taxonomy file
