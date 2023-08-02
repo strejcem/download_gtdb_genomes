@@ -50,6 +50,11 @@ p <-
                default = NA)
 p <-
   add_argument(p,
+               "--out_tax",
+               help = "[Path] to a file containing taxonomy for the accessions.",
+               default = NA)
+p <-
+  add_argument(p,
                "--mimag",
                help = "One of [low, medium, high, all] filters MIMAG quality of MAGs",
                default = "all")
@@ -98,7 +103,7 @@ if (!is.na(argv$num_genomes) &
 }
 
 if (!is.na(argv$tax_level) &
-    !argv$tax_level %in% c("phylum", "class", "order", "samily", "senus", "species")) {
+    !argv$tax_level %in% c("phylum", "class", "order", "family", "genus", "species")) {
   stop("'--tax_level' must be one of [phylum|class|order|family|genus|species]")
 }
 
@@ -327,4 +332,13 @@ if (!is.na(argv$contigs2genomes)) {
   message("Done.")
 }
 
-#TODO: add taxonomy file
+if (!is.na(argv$out_tax)) {
+  if (!dir.exists(dirname(argv$out_tax))) {
+    dir.create(dirname(argv$out_tax))
+  }
+  
+  tax_selection %>%
+    left_join(gtdb_meta, by = "accession") %>%
+    select(accession, domain, phylum, class, order, family, genus, species) %>%
+    write_tsv(argv$out_tax)
+}
