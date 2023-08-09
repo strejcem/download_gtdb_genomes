@@ -11,7 +11,7 @@ p <- arg_parser(
   Taxonomy/metadata files can be accessed at https://data.gtdb.ecogenomic.org/releases/latest/
 
   Depends on:
-  'conda install r-tidyverse r-argparser ncbi-datasets-cli>=15.11.0'
+  'conda install r-tidyverse r-argparser r-furrr ncbi-datasets-cli>=15.11.0'
   'wget https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tar.gz'
   'wget https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tar.gz'
   'wget https://data.gtdb.ecogenomic.org/releases/latest/VERSION.txt'
@@ -326,12 +326,13 @@ if (!is.na(argv$contigs2genomes)) {
     tibble(genomes = basename(x),
            contigs = readLines(pipe(sprintf(awk_cmd))))
   }
-  
-  map(fna_files, .f = collect_contigs, .progress = TRUE) %>%
+  library(furrr)
+  plan(multisession)
+  future_map(fna_files, .f = collect_contigs, .progress = TRUE) %>%
     list_rbind() %>%
     mutate(
       genomes = str_remove(genomes, "\\.fna$"),
-      contigs = str_extract(contigs, "^>[:alnum:]+\\.[:digit:]+"),
+      contigs = str_remove(contigs, " .*"),
       contigs = str_remove(contigs, "^>")
     ) %>%
     write_tsv(argv$contigs2genomes, col_names = FALSE)
