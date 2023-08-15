@@ -4,7 +4,7 @@ library(argparser, quietly = TRUE)
 
 p <- arg_parser(
   hide.opts = TRUE,
-  "Version 2.1, by Michal Strejcek @ UCT Prague
+  "Version 2.2, by Michal Strejcek @ UCT Prague
   Downloads NCBI assemblies from RefSeq or GenBank based on GTDB taxonomy labels.
 
   At least one of Arc/Bac taxonomy/metadata file needs to be specified.
@@ -326,7 +326,8 @@ if (!is.na(argv$contigs2genomes)) {
     tibble(genomes = basename(x),
            contigs = readLines(pipe(sprintf(awk_cmd))))
   }
-  library(furrr)
+  
+  suppressPackageStartupMessages(library(furrr))
   plan(multisession)
   future_map(fna_files, .f = collect_contigs, .progress = TRUE) %>%
     list_rbind() %>%
