@@ -4,7 +4,7 @@ library(argparser, quietly = TRUE)
 
 p <- arg_parser(
   hide.opts = TRUE,
-  "Version 2.1, by Michal Strejcek @ UCT Prague
+  "Version 2.2, by Michal Strejcek @ UCT Prague
   Downloads NCBI assemblies from RefSeq or GenBank based on GTDB taxonomy labels.
 
   At least one of Arc/Bac taxonomy/metadata file needs to be specified.
