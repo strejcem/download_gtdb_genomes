@@ -4,14 +4,14 @@ library(argparser, quietly = TRUE)
 
 p <- arg_parser(
   hide.opts = TRUE,
-  "Version 2.1, by Michal Strejcek @ UCT Prague
+  "Version 2.2, by Michal Strejcek @ UCT Prague
   Downloads NCBI assemblies from RefSeq or GenBank based on GTDB taxonomy labels.
 
   At least one of Arc/Bac taxonomy/metadata file needs to be specified.
   Taxonomy/metadata files can be accessed at https://data.gtdb.ecogenomic.org/releases/latest/
 
   Depends on:
-  'conda install r-tidyverse r-argparser ncbi-datasets-cli>=15.11.0'
+  'conda install r-tidyverse r-argparser r-furrr ncbi-datasets-cli>=15.11.0'
   'wget https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tar.gz'
   'wget https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tar.gz'
   'wget https://data.gtdb.ecogenomic.org/releases/latest/VERSION.txt'
@@ -50,6 +50,11 @@ p <-
                default = NA)
 p <-
   add_argument(p,
+               "--out_tax",
+               help = "[Path] to a file containing taxonomy for the accessions.",
+               default = NA)
+p <-
+  add_argument(p,
                "--mimag",
                help = "One of [low, medium, high, all] filters MIMAG quality of MAGs",
                default = "all")
@@ -78,9 +83,6 @@ if (is.na(argv$gtdb_tag)) {
        Use '-h' for help!")
 }
 
-if (is.na(out_dir)) {
-  stop("Output directory must be specified!")
-}
 
 if (is.na(argv$metadata)) {
   stop("GTDB metadata file must be specified!")
@@ -98,7 +100,7 @@ if (!is.na(argv$num_genomes) &
 }
 
 if (!is.na(argv$tax_level) &
-    !argv$tax_level %in% c("phylum", "class", "order", "samily", "senus", "species")) {
+    !argv$tax_level %in% c("phylum", "class", "order", "family", "genus", "species")) {
   stop("'--tax_level' must be one of [phylum|class|order|family|genus|species]")
 }
 
@@ -114,6 +116,10 @@ if (!is.na(argv$mimag) &
 
 if (!is.na(argv$seed)) {
   set.seed(argv$seed)
+}
+
+if (is.na(out_dir)) {
+  stop("Output directory must be specified!")
 }
 
 to_pick <- str_split_1(argv$gtdb_tag, pattern = ",")
@@ -199,8 +205,12 @@ if (num_acc == 0) {
   stop("No accession to download!")
 }
 
+if (!dir.exists(out_dir)) {
+  dir.create(out_dir, recursive = TRUE)
+}
+
 acc_file <- file.path(out_dir, "accessions.txt")
-dir.create(out_dir)
+
 tax_selection %>%
   select(accession) %>%
   write_tsv(file = acc_file, col_names = FALSE)
@@ -224,6 +234,7 @@ dehydrate_arguments <- str_c(
   dehydrated_file
 )
 unzip_arguments <- str_c(sep = " ",
+                         "-q",
                          dehydrated_file,
                          "-d",
                          out_dir)
@@ -299,7 +310,7 @@ if (!is.na(argv$contigs2genomes)) {
   message("Generating contigs2genomes file...")
   
   if (!dir.exists(dirname(argv$contigs2genomes))) {
-    dir.create(dirname(argv$contigs2genomes))
+    dir.create(dirname(argv$contigs2genomes), recursive = TRUE)
   }
   
   fna_files <-
@@ -315,16 +326,26 @@ if (!is.na(argv$contigs2genomes)) {
     tibble(genomes = basename(x),
            contigs = readLines(pipe(sprintf(awk_cmd))))
   }
-  
-  map(fna_files, .f = collect_contigs, .progress = TRUE) %>%
+  library(furrr)
+  plan(multisession)
+  future_map(fna_files, .f = collect_contigs, .progress = TRUE) %>%
     list_rbind() %>%
     mutate(
       genomes = str_remove(genomes, "\\.fna$"),
-      contigs = str_extract(contigs, "^>[:alnum:]+\\.[:digit:]+"),
+      contigs = str_remove(contigs, " .*"),
       contigs = str_remove(contigs, "^>")
     ) %>%
     write_tsv(argv$contigs2genomes, col_names = FALSE)
   message("Done.")
 }
 
-#TODO: add taxonomy file
+if (!is.na(argv$out_tax)) {
+  if (!dir.exists(dirname(argv$out_tax))) {
+    dir.create(dirname(argv$out_tax), recursive = TRUE)
+  }
+  
+  tax_selection %>%
+    left_join(gtdb_meta, by = "accession") %>%
+    select(accession, domain, phylum, class, order, family, genus, species) %>%
+    write_tsv(argv$out_tax)
+}
