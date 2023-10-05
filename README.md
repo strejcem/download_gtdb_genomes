@@ -8,14 +8,14 @@ conda activate download_gtsb_genomes
 ```
 ### Database:
 ```bash
-wget https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tar.gz
-wget https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tar.gz
+wget https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
+wget https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz
 wget https://data.gtdb.ecogenomic.org/releases/latest/VERSION.txt
 
-tar xzf ar53_metadata.tar.gz
-tar xzf bac120_metadata.tar.gz
-{ cat ar53_metadata*.tsv ; tail -n +2 bac120_metadata*.tsv ; } | gzip > gtdb_metadata.tsv.gz
-rm ar53* bac120*
+gtdb_ver=$(head -n1 VERSION.txt)
+gunzip ar53_metadata.tsv.gz bac120_metadata.tsv.gz
+{ cat ar53_metadata.tsv ; tail -n +2 bac120_metadata.tsv ; } | gzip > gtdb_metadata_"$gtdb_ver".tsv.gz
+rm ar53_metadata.tsv bac120_metadata.tsv
 ```
 ### Example of usage:
 ```bash
